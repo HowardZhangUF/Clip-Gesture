@@ -10,7 +10,7 @@ from config import (
     SAMPLE_K, USE_YOLO, YOLO_PAD
 )
 from clip_model import ClipZeroShot
-from classify import evaluate_folder
+from classify import evaluate_folder, classify_video_path
 from smoothing import TemporalSmoother
 from detection import PersonCropper
 def expand_inputs(patterns):
@@ -60,7 +60,7 @@ def main():
     ok_count, fail_count = 0, 0
     for vp in video_paths:
         try:
-            label, score, sims = ClipZeroShot(
+            label, score, sims = classify_video_path(
                 video_path=vp,
                 clip_model=clip,
                 labels=labels,
@@ -97,6 +97,19 @@ if __name__ == "__main__":
     labels, text_embeddings = clip_model.build_text_prototypes(CLASSES)
     # Temporal smoother
     smoother = TemporalSmoother()
+    cropper = PersonCropper(pad=YOLO_PAD) if USE_YOLO else None
 
     # Run evaluation on all videos
-    acc, cm = evaluate_folder(video_folder, clip_model, text_embeddings, CLASSES, output_dir=output_dir)
+    acc, cm = evaluate_folder(
+        video_folder,
+        clip_model,
+        text_embeddings,
+        CLASSES,
+        labels=labels,
+        output_dir=output_dir,
+        sample_k=SAMPLE_K,
+        use_yolo=USE_YOLO,
+        cropper=cropper,
+        tau_other=TAU_OTHER,
+        agg="mean",
+    )
