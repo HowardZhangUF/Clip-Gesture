@@ -81,7 +81,19 @@ def classify_video_path(video_path, clip_model, labels, text_stack,
     return label, score, sims
 
 
-def evaluate_folder(folder_path, clip_model, text_stack, classes, output_dir="outputs"):
+def evaluate_folder(
+    folder_path,
+    clip_model,
+    text_stack,
+    classes,
+    labels=None,
+    output_dir="outputs",
+    sample_k=16,
+    use_yolo=True,
+    cropper=None,
+    tau_other=0.27,
+    agg="mean",
+):
     import os
     os.makedirs(output_dir, exist_ok=True)
 
@@ -90,6 +102,8 @@ def evaluate_folder(folder_path, clip_model, text_stack, classes, output_dir="ou
 
     def normalize_label(name):
         return name.replace("_", "").upper()
+
+    label_list = labels or list(classes.keys())
 
     with open(log_file, "w", newline="") as f:
         writer = csv.writer(f)
@@ -114,7 +128,15 @@ def evaluate_folder(folder_path, clip_model, text_stack, classes, output_dir="ou
 
                 # --- call the correct function ---
                 pred_label, score, sims = classify_video_path(
-                    video_path, clip_model, list(classes.keys()), text_stack
+                    video_path,
+                    clip_model,
+                    label_list,
+                    text_stack,
+                    sample_k=sample_k,
+                    use_yolo=use_yolo,
+                    cropper=cropper,
+                    tau_other=tau_other,
+                    agg=agg,
                 )
 
                 all_preds.append(pred_label)
@@ -123,7 +145,6 @@ def evaluate_folder(folder_path, clip_model, text_stack, classes, output_dir="ou
                 writer.writerow([fname, gt_label, pred_label, f"{score:.3f}"])
 
     # --- Confusion Matrix ---
-    label_list = list(classes.keys())
     cm = confusion_matrix(all_labels, all_preds, labels=label_list)
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=label_list)
     disp.plot(cmap="Blues", xticks_rotation=45)
